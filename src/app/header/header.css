@@ -1,0 +1,14 @@
+
+header{
+    background-color: rgb(39, 37, 37);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+}
+h1{
+    color: red;
+    align-items: right;
+    font-size: large;
+}

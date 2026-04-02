@@ -1,0 +1,1 @@
+# TODO: Fix RouterOutlet Warning\n\n- [ ] 1. Edit src/app/app.html to add <router-outlet>\n- [ ] 2. Verify dev server shows no warning\n- [ ] 3. Test app at localhost:4200\n- [ ] 4. (Optional) Add sample route

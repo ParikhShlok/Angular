@@ -1,0 +1,19 @@
+<!-- @for (item of menu; track $index) {
+    <ul>
+        <li>{{item}}</li>
+    </ul>
+} -->
+    
+<button (click)="onButtonClick()">Click Me</button>
+<select (change)="onSelect($event)">
+  <option value="">Select Style</option>
+  
+@for (item of styles; track $index) {
+    <option value="{{item}}">{{item}}</option>
+  }
+
+</select>
+
+@if (selectedStyle) {
+  <p>You selected: {{ selectedStyle }}</p>
+}
