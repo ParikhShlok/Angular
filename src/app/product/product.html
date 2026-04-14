@@ -1,15 +1,44 @@
+<div class="controls">
+
+  <!-- 🔍 Search Bar -->
+  <input 
+    type="text" 
+    placeholder="Search product..."
+    [(ngModel)]="searchText"
+  />
+
+  <!-- 📂 Dropdown -->
+  <select [(ngModel)]="selectedCategory">
+@for (cat of categories(); track cat) {
+      <option [value]="cat">{{ cat }}</option>
+    }
+  </select>
+
+</div>
+
 <div class="container">
 
-  @for (product of products; track product) {
+@for (product of filteredProducts(); track product.id) {
     <div class="card">
 
-      <img [src]="product.image" alt="product image" />
+      <img [src]="product.image" />
 
-      <h2>{{ product.name }}</h2>
+      <h3>{{ product.name }}</h3>
 
-      <p>Price: ₹{{ product.price }}</p>
+      <p>₹{{ product.price }}</p>
 
-      <p>Category: {{ product.category }}</p>
+      <p>{{ product.category }}</p>
+
+      <!-- 📊 Price Progress Bar -->
+      <div class="progress">
+        <div 
+          class="progress-bar"
+          [style.width.%]="(product.price / 1000)">
+        </div>
+      </div>
+
+      <!-- Price indicator -->
+      <span>Price: ₹{{ product.price }}</span>
 
     </div>
   }
