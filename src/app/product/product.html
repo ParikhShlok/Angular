@@ -1,15 +1,50 @@
+<div class="add-section">
+  <button type="button" (click)="onToggleForm()">{{ showForm() ? 'Cancel Add' : '+ Add New Product' }}</button>
+  @if (showForm()) {
+    <form [formGroup]="form" (ngSubmit)="addProduct()" class="add-form" novalidate>
+      <input formControlName="name" placeholder="Product Name *" />
+      @if (form.get('name')?.invalid && form.get('name')?.touched) {
+        <div class="error">Name is required</div>
+      }
+
+      <input formControlName="price" type="number" placeholder="Price (₹) *" />
+      @if (form.get('price')?.invalid && form.get('price')?.touched) {
+        @if (form.get('price')?.errors?.['required']) {
+          <div class="error">Price is required</div>
+        }
+        @if (form.get('price')?.errors?.['min']) {
+          <div class="error">Price must be at least 0</div>
+        }
+      }
+
+      <select formControlName="category">
+        @for (cat of productService.categoriesForForm(); track cat) {
+          <option [value]="cat">{{ cat }}</option>
+        }
+      </select>
+      @if (form.get('category')?.invalid && form.get('category')?.touched) {
+        <div class="error">Category is required</div>
+      }
+
+      <button type="submit" [disabled]="form.invalid">Add Product</button>
+    </form>
+  }
+</div>
+
 <div class="controls">
 
   <!-- 🔍 Search Bar -->
   <input 
     type="text" 
     placeholder="Search product..."
-    [(ngModel)]="searchText"
+    [ngModel]="productService.searchText()"
+    (ngModelChange)="productService.searchText.set($event)"
   />
 
   <!-- 📂 Dropdown -->
-  <select [(ngModel)]="selectedCategory">
-@for (cat of categories(); track cat) {
+  <select [ngModel]="productService.selectedCategory()"
+          (ngModelChange)="productService.selectedCategory.set($event)">
+@for (cat of productService.categories(); track cat) {
       <option [value]="cat">{{ cat }}</option>
     }
   </select>
@@ -18,7 +53,7 @@
 
 <div class="container">
 
-@for (product of filteredProducts(); track product.id) {
+@for (product of productService.filteredProducts(); track product.id) {
     <div class="card">
 
       <img [src]="product.image" />
