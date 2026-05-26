@@ -33,6 +33,15 @@
 
 <div class="controls">
 
+  @if (productService.loading()) {
+    <p>Loading products...</p>
+  }
+  @if (productService.error()) {
+    <p class="error">{{ productService.error() }}</p>
+  }
+
+
+
   <!-- 🔍 Search Bar -->
   <input 
     type="text" 
