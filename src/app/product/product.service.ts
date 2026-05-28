@@ -1,8 +1,6 @@
-import { Injectable, computed, signal, inject } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { finalize, map } from 'rxjs';
-
-
+import { catchError, finalize, map, of } from 'rxjs';
 
 export interface Product {
   id: number;
@@ -16,24 +14,70 @@ export interface Product {
   providedIn: 'root'
 })
 export class ProductService {
-  // State signals (writable for two-way binding)
+  // UI state
   searchText = signal('');
   selectedCategory = signal('All');
 
-  // Data signals
+  // Data
   products = signal<Product[]>([]);
+  searchResults = signal<Product[]>([]);
   categories = signal<string[]>(['All']);
 
   loading = signal(false);
   error = signal<string | null>(null);
 
-  private http = inject(HttpClient);
+  // Searching (API)
+  searching = signal(false);
+  searchError = signal<string | null>(null);
 
-  // Fetch from dummyjson as soon as the service is created
+  private http = inject(HttpClient);
   private readonly apiBase = 'https://dummyjson.com';
 
   constructor() {
     this.loadProducts();
+
+    // Simple API search behavior is triggered from the component.
+    // (Call this.searchFromApi() on ngModelChange.)
+  }
+
+
+  /** Call the API search once (debounce is intentionally removed for simplicity). */
+  searchFromApi(): void {
+    const q = (this.searchText() ?? '').trim();
+
+    if (!q) {
+      this.searchResults.set([]);
+      return;
+    }
+
+    this.searching.set(true);
+    this.searchError.set(null);
+
+    this.http
+      .get<any>(`${this.apiBase}/products/search?q=${encodeURIComponent(q)}`)
+      .pipe(
+        map((res) => res?.products ?? []),
+        map((items) => (items as any[]).map((p) => this.toProduct(p))),
+        catchError((err) => {
+          this.searchError.set('Failed to search products');
+          console.error(err);
+          return of([] as Product[]);
+        }),
+        finalize(() => this.searching.set(false))
+      )
+      .subscribe((results) => {
+        this.searchResults.set(results);
+      });
+  }
+
+  private toProduct(p: any): Product {
+    return {
+      id: p.id,
+      name: p.title,
+      price: p.price,
+      category: p.category,
+      image: Array.isArray(p.images) && p.images.length ? p.images[0] : '#'
+    };
   }
 
   private loadProducts(): void {
@@ -44,62 +88,62 @@ export class ProductService {
       .get<{ products: any[] }>(`${this.apiBase}/products`)
       .pipe(
         map((res) => res.products ?? []),
-        map((items) =>
-          items.map((p) => ({
-            id: p.id,
-            name: p.title,
-            price: p.price,
-            category: p.category,
-            image: Array.isArray(p.images) && p.images.length ? p.images[0] : '#'
-          }))
-        ),
-        finalize(() => this.loading.set(false))
-      )
-      .subscribe({
-        next: (products) => {
-          this.products.set(products);
-
-          // derive categories from API results
-          const unique = Array.from(new Set(products.map((p) => p.category).filter(Boolean)));
-          this.categories.set(['All', ...unique]);
-
-          // if currently selected category no longer exists, fall back to All
-          const selected = this.selectedCategory();
-          if (selected !== 'All' && !unique.includes(selected)) {
-            this.selectedCategory.set('All');
-          }
-        },
-        error: (err) => {
+        map((items) => items.map((p) => this.toProduct(p))),
+        finalize(() => this.loading.set(false)),
+        catchError((err) => {
           this.error.set('Failed to load products');
           console.error(err);
+          return of([] as Product[]);
+        })
+      )
+      .subscribe((products) => {
+        this.products.set(products);
+
+        const unique = Array.from(new Set(products.map((p) => p.category).filter(Boolean)));
+        this.categories.set(['All', ...unique]);
+
+        const selected = this.selectedCategory();
+        if (selected !== 'All' && !unique.includes(selected)) {
+          this.selectedCategory.set('All');
         }
       });
   }
 
-
-
-// Computed filtered products
+  // Uses API results when searchText is present; otherwise uses all loaded products.
   filteredProducts = computed(() => {
-    const searchLower = this.searchText().toLowerCase();
     const category = this.selectedCategory();
-    return this.products().filter(product => 
-      product.name.toLowerCase().includes(searchLower) &&
-      (category === 'All' || product.category === category)
-    );
+    const q = (this.searchText() ?? '').trim();
+
+    const base = q ? this.searchResults() : this.products();
+    return base.filter((product) => category === 'All' || product.category === category);
   });
 
-  // UI-only: dummyjson does not support create via POST in this task.
-  addProduct(productData: {name: string; price: number; category: string}): void {
-    const newId = this.products().length > 0
-      ? Math.max(...this.products().map(p => p.id)) + 1
-      : 1;
+  addProduct(productData: { name: string; price: number; category: string }): void {
+    this.loading.set(true);
+    this.error.set(null);
 
-    this.products.update(products => [
-      ...products,
-      { id: newId, name: productData.name, price: productData.price, category: productData.category, image: '#' }
-    ]);
+    const body = {
+      title: productData.name,
+      price: productData.price,
+      category: productData.category
+    };
+
+    this.http
+      .post<any>(`${this.apiBase}/products/add`, body)
+      .pipe(
+        finalize(() => this.loading.set(false)),
+        catchError((err) => {
+          this.error.set('Failed to add product');
+          console.error(err);
+          return of(null);
+        })
+      )
+      .subscribe(() => {
+        this.loadProducts();
+      });
   }
-
 
   readonly categoriesForForm = this.categories.asReadonly();
 }
+
+

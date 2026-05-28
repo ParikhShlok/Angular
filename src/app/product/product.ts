@@ -34,8 +34,9 @@ export class ProductComponent {
         price: value.price!,
         category: value.category!
       });
-      this.form.reset({name: '', price: 0, category: ''});
+      this.form.reset({ name: '', price: 0, category: '' });
       this.showForm.set(false);
     }
   }
 }
+
